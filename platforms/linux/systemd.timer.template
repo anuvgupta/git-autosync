@@ -1,0 +1,12 @@
+[Unit]
+Description=git-autosync timer for {{REPO_PATH}}
+
+[Timer]
+OnBootSec={{INTERVAL}}s
+OnUnitActiveSec={{INTERVAL}}s
+AccuracySec=15s
+Persistent=true
+Unit={{LABEL}}.service
+
+[Install]
+WantedBy=timers.target

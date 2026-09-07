@@ -2,14 +2,78 @@
 """Auto-commit & push any git repo. Designed to run on a schedule via launchd."""
 
 import argparse
-import fcntl
 import hashlib
 import os
 import socket
 import subprocess
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
+
+try:
+    from filelock import FileLock, Timeout as _FileLockTimeout
+    _LOCK_BACKEND = "filelock"
+except ImportError:
+    _LOCK_BACKEND = "msvcrt" if sys.platform == "win32" else "fcntl"
+    if sys.platform == "win32":
+        import msvcrt
+    else:
+        import fcntl
+
+
+class ProcessLock:
+    """Non-blocking cross-process file lock.
+
+    Uses `filelock` if installed (works everywhere, one import); otherwise falls back to
+    stdlib `fcntl` on Unix or `msvcrt` on Windows.
+    """
+
+    def __init__(self, path: Path):
+        self.path = path
+        self._fh = None
+        self._flock = None
+
+    def try_acquire(self) -> bool:
+        if _LOCK_BACKEND == "filelock":
+            self._flock = FileLock(str(self.path))
+            try:
+                self._flock.acquire(timeout=0)
+                return True
+            except _FileLockTimeout:
+                self._flock = None
+                return False
+
+        self._fh = open(self.path, "wb")
+        self._fh.write(b"\0")
+        self._fh.flush()
+        self._fh.seek(0)
+        try:
+            if _LOCK_BACKEND == "msvcrt":
+                msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                fcntl.flock(self._fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except (OSError, BlockingIOError):
+            self._fh.close()
+            self._fh = None
+            return False
+
+    def release(self) -> None:
+        if self._flock is not None:
+            self._flock.release()
+            self._flock = None
+            return
+        if self._fh is not None:
+            try:
+                if _LOCK_BACKEND == "msvcrt":
+                    msvcrt.locking(self._fh.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(self._fh, fcntl.LOCK_UN)
+            except OSError:
+                pass
+            self._fh.close()
+            self._fh = None
 
 
 def log(msg: str) -> None:
@@ -44,12 +108,10 @@ def main() -> int:
         return 1
 
     repo_hash = hashlib.sha1(str(repo).encode()).hexdigest()[:8]
-    lock_path = Path(f"/tmp/git-autosync-{repo_hash}.lock")
+    lock_path = Path(tempfile.gettempdir()) / f"git-autosync-{repo_hash}.lock"
 
-    lock = open(lock_path, "w")
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
+    lock = ProcessLock(lock_path)
+    if not lock.try_acquire():
         log("another sync is already running; skipping")
         return 0
 
@@ -79,8 +141,7 @@ def main() -> int:
 
         return 0
     finally:
-        fcntl.flock(lock, fcntl.LOCK_UN)
-        lock.close()
+        lock.release()
 
 
 if __name__ == "__main__":

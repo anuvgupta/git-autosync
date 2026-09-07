@@ -1,0 +1,12 @@
+[Unit]
+Description=git-autosync for {{REPO_PATH}}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory={{REPO_PATH}}
+ExecStart={{PYTHON}} {{SCRIPT_PATH}} {{REPO_PATH}}
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+StandardOutput=append:{{LOG_PATH}}
+StandardError=append:{{LOG_PATH}}
