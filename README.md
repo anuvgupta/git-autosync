@@ -17,6 +17,10 @@ Multiple repos can run independently — each gets its own scheduler unit and lo
 The top-level `install.sh` detects the OS and dispatches to the platform implementation under
 `platforms/`. Same for `uninstall.sh`. To skip detection, run the platform script directly.
 
+On Windows the dispatcher works from Git Bash (it detects `MINGW*`/`MSYS*`/`CYGWIN*` and hands off
+to PowerShell). From PowerShell directly, call `platforms\windows\install.ps1`, which takes
+PowerShell-style flags (`-Interval`, `-Label`, ...) rather than the `--flag` form.
+
 ### Options (both platforms)
 
 ```
@@ -29,7 +33,8 @@ The top-level `install.sh` detects the OS and dispatches to the platform impleme
   --interval SECS            sync interval          (default: 300)
   --log PATH                 log file path          (see platform README for default)
   --python PATH              python3 interpreter    (default: /usr/bin/python3 on macOS,
-                                                     $(command -v python3) on Linux)
+                                                     $(command -v python3) on Linux,
+                                                     first python.exe on PATH on Windows)
 ```
 
 ## Layout
@@ -41,7 +46,8 @@ git-autosync/
 ├── sync.py               <- shared sync logic
 └── platforms/
     ├── macos/            <- launchd agent + plist template
-    └── linux/            <- systemd user service + timer templates
+    ├── linux/            <- systemd user service + timer templates
+    └── windows/          <- Task Scheduler task + XML template (PowerShell)
 ```
 
 Platform-specific setup notes (Full Disk Access on macOS, `loginctl enable-linger` on Linux, etc.)
@@ -49,6 +55,7 @@ live in each platform's own README.
 
 - [platforms/macos/README.md](platforms/macos/README.md)
 - [platforms/linux/README.md](platforms/linux/README.md)
+- [platforms/windows/README.md](platforms/windows/README.md)
 
 ## Test manually
 
