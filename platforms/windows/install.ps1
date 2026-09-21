@@ -25,7 +25,7 @@ Options:
   -Label LABEL        scheduled task name   (default: git-autosync-<repo-name>)
   -Interval SECS      sync interval         (default: 300; minimum 60)
   -Log PATH           log file path         (default: %LOCALAPPDATA%\git-autosync\<label>.log)
-  -Python PATH        python interpreter    (default: first python.exe on PATH)
+  -Python PATH        python interpreter    (default: pythonw.exe on PATH, no console window)
   -Help               show this help
 '@ | Write-Host
 }
@@ -43,9 +43,15 @@ $repoRoot  = Resolve-Path (Join-Path $scriptDir '..\..')
 if ($Interval -lt 60) { Write-Error "-Interval must be >= 60 (Task Scheduler granularity); got $Interval" }
 
 if (-not $Python) {
-    $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
-    if (-not $cmd) { Write-Error 'python.exe not found on PATH (pass -Python)' }
+    # Prefer pythonw.exe: it has no console, so the scheduled run shows no window.
+    # sync.py --log writes the log itself, so nothing is lost by having no stdout.
+    $cmd = Get-Command pythonw.exe -ErrorAction SilentlyContinue
+    if (-not $cmd) { $cmd = Get-Command python.exe -ErrorAction SilentlyContinue }
+    if (-not $cmd) { Write-Error 'pythonw.exe / python.exe not found on PATH (pass -Python)' }
     $Python = $cmd.Source
+}
+if ($Python -notmatch 'pythonw\.exe$') {
+    Write-Warning "$Python has a console; each run will flash a window. Pass -Python <...>\pythonw.exe to avoid it."
 }
 if (-not (Test-Path -LiteralPath $Python)) { Write-Error "python not found: $Python" }
 

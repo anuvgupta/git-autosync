@@ -50,8 +50,8 @@
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>cmd.exe</Command>
-      <Arguments>/c ""{{PYTHON}}" "{{SCRIPT_PATH}}" "{{REPO_PATH}}" &gt;&gt; "{{LOG_PATH}}" 2&gt;&amp;1"</Arguments>
+      <Command>{{PYTHON}}</Command>
+      <Arguments>"{{SCRIPT_PATH}}" "{{REPO_PATH}}" --log "{{LOG_PATH}}"</Arguments>
       <WorkingDirectory>{{REPO_PATH}}</WorkingDirectory>
     </Exec>
   </Actions>

@@ -32,6 +32,9 @@ PowerShell-style flags (`-Interval`, `-Label`, ...) rather than the `--flag` for
                              Linux default:  git-autosync-<repo-name>
   --interval SECS            sync interval          (default: 300)
   --log PATH                 log file path          (see platform README for default)
+                             Windows passes this through to `sync.py --log` so the
+                             interpreter can run without a shell wrapper; see
+                             platforms/windows/README.md.
   --python PATH              python3 interpreter    (default: /usr/bin/python3 on macOS,
                                                      $(command -v python3) on Linux,
                                                      first python.exe on PATH on Windows)

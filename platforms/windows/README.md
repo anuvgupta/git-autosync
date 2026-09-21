@@ -40,13 +40,25 @@ with `-LogonType Password`, which is left out on purpose.
 
 `StartWhenAvailable` is set, so a missed run fires once the machine is back.
 
-## Logging
+## Logging, and no console window
 
-Task Scheduler cannot redirect output, so the action runs
-`cmd.exe /c "<python> <sync.py> <repo>" >> <log> 2>&1`. `Hidden` is set, but a
-console window may still flash on each run — that is a Task Scheduler limitation,
-not a bug. Use `pythonw.exe` via `-Python` to suppress it, at the cost of losing
-the log.
+Task Scheduler cannot redirect output, so an obvious implementation wraps the
+command in `cmd.exe /c "... >> log 2>&1"`. That works but gives `cmd` a console,
+and a black window flashes on every run. The task's `Hidden` setting does not
+help — it only hides the task in the Task Scheduler UI, not the window.
+
+Instead the action invokes the interpreter directly and lets `sync.py --log`
+open the log file itself:
+
+```
+<Command>C:\...\pythonw.exe</Command>
+<Arguments>"...\sync.py" "...\repo" --log "...\repo.log"</Arguments>
+```
+
+`pythonw.exe` has no console at all, so there is nothing to show — and because
+the logging moved into the script, nothing is lost by having no stdout. The
+installer defaults to `pythonw.exe` and warns if you override `-Python` with an
+interpreter that has a console.
 
 ## Verify
 

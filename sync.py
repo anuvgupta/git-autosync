@@ -96,7 +96,25 @@ def main() -> int:
         default=os.environ.get("GIT_AUTOSYNC_REPO"),
         help="Path to the git repo (or set GIT_AUTOSYNC_REPO env var)",
     )
+    parser.add_argument(
+        "--log",
+        default=os.environ.get("GIT_AUTOSYNC_LOG"),
+        help=(
+            "Append output to this file instead of stdout (or set GIT_AUTOSYNC_LOG). "
+            "Lets the scheduler invoke the interpreter directly rather than wrapping "
+            "it in a shell for redirection -- on Windows that is what avoids a console "
+            "window flashing on every run, since pythonw.exe has no stdout to redirect."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.log:
+        log_path = Path(args.log).expanduser()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        # Line-buffered so a crash still leaves the preceding lines on disk.
+        handle = open(log_path, "a", encoding="utf-8", buffering=1)
+        sys.stdout = handle
+        sys.stderr = handle
 
     if not args.repo:
         print("error: repo path required (positional arg or GIT_AUTOSYNC_REPO)", file=sys.stderr)
