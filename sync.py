@@ -44,19 +44,21 @@ class ProcessLock:
                 self._flock = None
                 return False
 
-        self._fh = open(self.path, "wb")
-        self._fh.write(b"\0")
-        self._fh.flush()
-        self._fh.seek(0)
+        # Open inside the try: on Windows, writing to a file another process has
+        # locked raises PermissionError, which must mean "busy", not "crash".
+        # "a+b" rather than "wb" so we never truncate a file someone else holds.
         try:
+            self._fh = open(self.path, "a+b")
+            self._fh.seek(0)
             if _LOCK_BACKEND == "msvcrt":
                 msvcrt.locking(self._fh.fileno(), msvcrt.LK_NBLCK, 1)
             else:
                 fcntl.flock(self._fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return True
         except (OSError, BlockingIOError):
-            self._fh.close()
-            self._fh = None
+            if self._fh is not None:
+                self._fh.close()
+                self._fh = None
             return False
 
     def release(self) -> None:
