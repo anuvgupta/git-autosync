@@ -82,8 +82,20 @@ def log(msg: str) -> None:
     print(f"[{datetime.now().isoformat(timespec='seconds')}] {msg}", flush=True)
 
 
+# Under pythonw.exe the parent has no console, so Windows allocates a fresh one
+# for every console child -- a git window flashing on each call. CREATE_NO_WINDOW
+# suppresses that. No-op off Windows, where the flag does not exist.
+_NO_WINDOW = (
+    {"creationflags": subprocess.CREATE_NO_WINDOW}
+    if sys.platform == "win32"
+    else {}
+)
+
+
 def run(cmd: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=check)
+    return subprocess.run(
+        cmd, cwd=cwd, capture_output=True, text=True, check=check, **_NO_WINDOW
+    )
 
 
 def has_changes(repo: Path) -> bool:
